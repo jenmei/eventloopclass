@@ -7,11 +7,18 @@ http.createServer(function (req, res) {
   
   if (req.url == "/slow") {
     var objects = [];
+    var i=0;
     
-    for (var i=0; i < 10000000; i++) {
+    function compute() {
       objects.push(new Object()); // pretend we're computing something here
-    };
-    res.end("slow request done");
+      
+      if (i++ < 10000000) {
+        process.nextTick(compute);
+      } else {
+        res.end("slow request done");
+      }
+    }
+    compute();
         
   } else {
     res.end("fast request done");
