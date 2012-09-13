@@ -12,6 +12,7 @@ console.log("Listening on port 3000");
 while (true) {
   syscalls.select([fd], [], [], 0);
   var connFd = syscalls.accept(fd);
+  syscalls.fcntl(connFd, syscalls.F_SETFL, syscalls.O_NONBLOCK);
   console.log("Accepted new connection");
   
   syscalls.select([connFd], [], [], 0);
