@@ -9,18 +9,49 @@ syscalls.listen(fd, 100);
 
 console.log("Listening on port 3000");
 
-while (true) {
-  syscalls.select([fd], [], [], 0);
+var readables = {}; // {fd: callback}
+var writables = {}; // {fd: callback}
+
+readables[fd] = function() {
   var connFd = syscalls.accept(fd);
   syscalls.fcntl(connFd, syscalls.F_SETFL, syscalls.O_NONBLOCK);
   console.log("Accepted new connection");
   
-  syscalls.select([connFd], [], [], 0);
-  var data = syscalls.read(connFd, 1024);
-  console.log("Received: " + data);
+  readables[connFd] = function() {
+    var data = syscalls.read(connFd, 1024);
+    console.log("Received: " + data);
+    delete readables[connFd];
   
-  syscalls.select([], [connFd], [], 0);
-  syscalls.write(connFd, "bye!\n");
+    writables[connFd] = function() {
+      syscalls.write(connFd, "bye!\n");
 
-  syscalls.close(connFd);
+      syscalls.close(connFd);
+      delete writables[connFd];
+    }
+  }
+}
+
+// Here the event LOOP!
+while (true) {
+  var fds = syscalls.select(Object.keys(readables), Object.keys(writables), [], 0);
+  
+  // fds = [
+  //   [readables]
+  //   [writables]
+  //   [errors]
+  // ]
+  
+  var readableFds = fds[0];
+  var writableFds = fds[1];
+  
+  for (var i=0; i < readableFds.length; i++) {
+    var fd = readableFds[i];
+    var callback = readables[fd];
+    callback();
+  };
+  for (var i=0; i < writableFds.length; i++) {
+    var fd = writableFds[i];
+    var callback = writables[fd];
+    callback();
+  };
 }
