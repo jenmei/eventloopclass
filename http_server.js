@@ -36,6 +36,20 @@ HttpServer.Connection = function(fd, callback) {
     console.log(request);
     var response = callback(request);
     console.log(response);
+    
+    sendResponse("HTTP/1.1 200 OK\r\n" +
+                 "Content-Type: text/plain\r\n" +
+                 "Content-Length: " + response.length + "\r\n" +
+                 "\r\n" +
+                 response);
+  }
+  
+  function sendResponse(data) {
+    loop.on(fd, 'write', function() {
+      syscalls.send(fd, data); // TCP_NOPUSH, TCP_CORK
+      syscalls.close(fd);
+      loop.remove(fd, 'write');
+    })
   }
 }
 
