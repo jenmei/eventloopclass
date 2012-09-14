@@ -8,10 +8,20 @@ http.createServer(function (req, res) {
   if (req.url == "/slow") {
     var objects = [];
     
-    for (var i=0; i < 10000000; i++) {
-      objects.push(new Object()); // pretend we're computing something here
-    };
-    res.end("slow request done");
+    var i=0;
+    function compute() {
+      for (var j=0; j < 10000; j++, i++) {
+        objects.push(new Object()); // pretend we're computing something here
+      };
+      
+      if (i < 10000000) {
+        i++;
+        process.nextTick(compute);
+      } else {
+        res.end("slow request done");
+      }
+    }
+    compute();
         
   } else {
     res.end("fast request done");
