@@ -26,9 +26,19 @@ exports.in = function(sec, callback) {
   timers.push({ timeout: timer + sec, callback: callback });
 };
 
+var nextTicks = [];
+exports.nextTick = function(callback) {
+  nextTicks.push(callback);
+};
+
 exports.run = function() {
   // Here the event LOOP!
   while (true) {
+    for (var i=0; i < nextTicks.length; i++) {
+      nextTicks[i]();
+    };
+    nextTicks = [];
+    
     var fds = syscalls.select(Object.keys(readables), Object.keys(writables), [], 1);
     
     timer += 1;
@@ -36,6 +46,7 @@ exports.run = function() {
       if (timers[i].timeout >= timer) {
         timers[i].callback();
         timers.splice(i, 1);
+        i--;
       }
     };
 
