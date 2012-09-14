@@ -12,10 +12,27 @@ var HttpServer = function(callback) {
   
   self.start = function() {
     loop.on(fd, 'read', function() {
-      var connFd = syscalls.accept(fd);
-      syscalls.fcntl(connFd, syscalls.F_SETFL, syscalls.O_NONBLOCK);
-      new HttpServer.Connection(connFd, callback);
+      try {
+        var connFd = syscalls.accept(fd);
+      } catch (e) {
+        // Another worker accepted the connection
+      }
+      if (connFd) {
+        syscalls.fcntl(connFd, syscalls.F_SETFL, syscalls.O_NONBLOCK);
+        new HttpServer.Connection(connFd, callback);
+      }
     })
+  };
+  
+  self.fork = function(count) {
+    if (syscalls.fork() == 0) {
+      console.log("In child process: " + syscalls.getpid());
+      self.start();
+    } else {
+      console.log("In master process: " + syscalls.getpid());
+      count--;
+      if (count > 0) this.fork(count);
+    }
   };
 };
 
@@ -46,7 +63,7 @@ HttpServer.Connection = function(fd, callback) {
   
   function sendResponse(data) {
     loop.on(fd, 'write', function() {
-      syscalls.send(fd, data); // TCP_NOPUSH, TCP_CORK
+      syscalls.write(fd, data); // TCP_NOPUSH, TCP_CORK
       syscalls.close(fd);
       loop.remove(fd, 'write');
     })
@@ -55,9 +72,11 @@ HttpServer.Connection = function(fd, callback) {
 
 
 var server = new HttpServer(function(request) {
-  return "you returned " + request.url + "\n";
+  return "you requested " + request.url +
+         " from process: " + syscalls.getpid() + "\n";
 });
 
-server.start();
+// server.start();
+server.fork(3);
 
 loop.run();
