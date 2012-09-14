@@ -10,9 +10,9 @@ http.createServer(function (req, res) {
     
     var i=0;
     function compute() {
-      for (var j=0; j < 10000; j++, i++) {
+      // for (var j=0; j < 10000; j++, i++) {
         objects.push(new Object()); // pretend we're computing something here
-      };
+      // };
       
       if (i < 10000000) {
         i++;
